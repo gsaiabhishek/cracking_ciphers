@@ -1,0 +1,68 @@
+#lang racket
+
+;; You can require more modules of your choice.
+(require racket/string
+         racket/list
+         (prefix-in utils: "utils.rkt"))
+
+(provide secret-word-enumeration)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                                           ;;
+;; Secret Word Enumeration                                                                   ;;
+;; =======================                                                                   ;;
+;;                                                                                           ;;
+;; This step exploits the fact that all keys begin with a secret word that is a              ;;
+;; proper SIX-LETTER word from the English dictionary.                                       ;;
+;;                                                                                           ;;
+;; Given a partial key, we can query the dictionary for a list of 6 letter words             ;;
+;; that can potentially begin the key.                                                       ;;
+;; We can then filter out potential candidates whose keys do not agree with our partial key. ;;
+;;                                                                                           ;;
+;; It is possible that given a (wrong) partial key, we discover that none of these           ;;
+;; potential candidates can agree with our partial key. This really implies a                ;;
+;; mistake in the choice of substitution, since dictionary-closure is completely             ;;
+;; deterministic (modulo any bugs in your implementation :)                                  ;;
+;;                                                                                           ;;
+;; Hence, this function must return either of:                                               ;;
+;; a. `#f` if there are no consistent candidates for this key.                               ;;
+;; b. the original key if there are multiple consistent candidates.                          ;;
+;; c. the complete key if there's only one consistent candidate!                             ;;
+;;                                                                                           ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(define (secret-word-enumeration key-after-dictionary-closure) ;; Returns a key or false (#f)
+  (swe1  key-after-dictionary-closure (firstsix key-after-dictionary-closure '() 0) utils:dictionary))
+(define (firstsix l l1 c)
+  (cond [(= c 6) l1]
+        [(char-alphabetic? (car l)) (firstsix (cdr l) (append l1  (list (char-upcase (car l)))) (+ c 1))]
+        [else (firstsix (cdr l) (append l1  (list #\a)) (+ c 1))]))
+(define (count1 l1 l c l3)
+  (cond [(and (null? l) (>= c 2)) (cons 2 l3)]
+        [(and (null? l) (= c 0)) (cons 0 0)]
+        [(and (null? l) (= c 1) (cons 1 l3))]
+        [else (let ([carl (car l)]
+                    [cdrl (cdr l)])
+                   (cond  [(= 6 (string-length carl)) (if (match1 l1 (string->list carl)) (count1 l1 cdrl (+ c 1) (cons carl l3)) (count1 l1 cdrl c l3))]
+                          [else (count1 l1 cdrl c l3)]))]))
+(define (match1 l1 l2)
+  (cond [(null? l1) #t]
+        [else (let ([carl1 (car l1)]
+                    [cdrl1 (cdr l1)]
+                    [cdrl2 (cdr l2)])
+                    (cond [(char-upper-case? carl1) (if (char=? carl1 (car l2)) (match1 cdrl1 cdrl2) #f)]
+                          [else (match1 cdrl1 cdrl2)]))])) 
+(define (swe1 k l1 l)
+  (let* ([count1 (count1 l1 l 0 '())]
+         [carcount1 (car count1)])
+    (cond [(>= 2 carcount1) (let ([prepare (preparekeylist k (cdr count1) '())]) (if (null? prepare) #f prepare))]
+          [(= 0 carcount1) #f]
+          [else (let* ([cdrcount1 (cdr count1)]
+                      [addplain (addplain (string->list (string-downcase (car cdrcount1))))])
+                  (if (utils:is-monoalphabetic? addplain k) (list (utils:encryption-key (car cdrcount1))) #f))])))
+(define (preparekeylist k l l2)
+  (if (null? l) l2
+      (preparekeylist k (cdr l) (if (utils:is-monoalphabetic? (addplain (string->list (string-downcase (car l)))) k) (cons (utils:encryption-key (car l)) l2) l2))))
+(define (addplain l)
+  (match l
+    [(list a b c d e f) (list (cons #\A a) (cons #\B b) (cons #\C c) (cons #\D d) (cons #\E e) (cons #\F f))])) 
