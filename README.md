@@ -4,5 +4,4 @@ One of the CS 152&CS 154 course assignments.
 |---|---|
 | Guttu Sai Abhishek        | 180050036 |
 * Decrypted messages which are encrypted using mono-alphabetic substitution characterised by a keyword
-* ETAI, common-words-double, bigrams, common-words-triple are the strategies used for frequency findings
-* Dictionary Closure which uses Pattern matching(wrt a dictionary) is used to complete the keyword
+* Found letter frequencies, then applied dictionary closure(pattern matching wrt to a dictionary) to find the keyword  
